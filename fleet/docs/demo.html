@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>fleet — the prompt that knows if the tree is proven</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --fg:#c9d1d9; --green:#3fb950;
+          --red:#f85149; --cyan:#39c5cf; --yellow:#e3b341; --blue:#58a6ff; }
+  * { box-sizing: border-box; }
+  body { background:var(--bg); color:var(--fg); font:15px/1.5 ui-monospace,Menlo,Consolas,monospace;
+         margin:0; padding:32px clamp(16px,6vw,72px); }
+  h1 { font-size:22px; color:#fff; } h1 .dot { color:var(--green); }
+  h2 { font-size:15px; color:var(--yellow); margin-top:40px; letter-spacing:.08em; text-transform:uppercase; }
+  .sub { color:#8b949e; max-width:70ch; }
+  .term { background:var(--panel); border:1px solid #30363d; border-radius:10px; padding:14px 16px;
+          margin:18px 0; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+  .bar { display:flex; gap:6px; margin-bottom:10px; }
+  .bar i { width:11px; height:11px; border-radius:50%; background:#30363d; }
+  .bar i:nth-child(1){background:#ff5f57}.bar i:nth-child(2){background:#febc2e}.bar i:nth-child(3){background:#28c840}
+  .ln { white-space:pre-wrap; word-break:break-all; }
+  .p  { color:var(--cyan); } .ok { color:var(--green); } .bad{ color:var(--red); }
+  .y  { color:var(--yellow); } .b { color:var(--blue); } .dim{ color:#8b949e; }
+  .promptdot { display:inline-block; width:.7em; height:.7em; border-radius:50%; vertical-align:baseline; }
+  .controls { display:flex; gap:12px; margin:14px 0; flex-wrap:wrap; }
+  button { background:#21262d; color:var(--fg); border:1px solid #30363d; border-radius:8px;
+           padding:10px 16px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--blue); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+  .card { background:var(--panel); border:1px solid #30363d; border-radius:10px; padding:14px 16px; }
+  .card code { color:var(--yellow); }
+  .card p { color:#8b949e; font-size:13.5px; margin:.5em 0 0; }
+  @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.5)} 100%{transform:scale(1)} }
+  .pop { animation:pop .5s ease; display:inline-block; }
+</style>
+</head>
+<body>
+
+<h1>fleet <span class="dot">●</span> oh-my-zsh overlay</h1>
+<p class="sub">A shell that builds the way the fleet builds: receipts before
+claims, pins before pushes, wal_refs before narratives. The wow moment is the
+dot — your prompt knows whether the tree you are standing in is proven.</p>
+
+<h2>▶ The living dot (click things)</h2>
+<div class="term">
+  <div class="bar"><i></i><i></i><i></i></div>
+  <div class="ln"><span class="dim"># you, mid-session, two repos open</span></div>
+  <div class="ln"><span class="p">[backward-holdem]</span> <span id="dot1" class="promptdot" style="background:var(--green)"></span> <span class="b">~/lanes/laneJ-holdem/backward-holdem</span> <span class="ok">❯</span> <span class="dim" id="cmd1">pinrun</span></div>
+  <div class="ln dim" id="out1" style="min-height:1.5em"></div>
+  <div class="ln"><span class="p">[quilt-overhead]</span> <span id="dot2" class="promptdot" style="background:var(--red)"></span> <span class="b">~/lanes/quilt-overhead</span> <span class="ok">❯</span> <span class="dim" id="cmd2">pinrun</span></div>
+  <div class="ln dim" id="out2" style="min-height:1.5em"></div>
+</div>
+<div class="controls">
+  <button onclick="setDot(1,true)">fix holdem pins → ● green</button>
+  <button onclick="breakIt()">break a pin in quilt-overhead → ● red</button>
+  <button onclick="walrefDemo()">walref</button>
+</div>
+<div class="term" id="walterm" style="display:none">
+  <div class="ln"><span class="y">0809402a13c37d70</span>  (lineage.jsonl) <span class="dim">← a claim about this run now has a cite; without it, the claim is a rumor</span></div>
+</div>
+
+<h2>▶ Verbs (each wraps one doctrine)</h2>
+<div class="grid">
+  <div class="card"><code>pinrun</code><p>Runs every tools/pin_*.py in the lane, writes
+    <code>.pin-last</code>, and the prompt dot flips. Pins are the fleet's fail-first
+    proof law — the dot is that law, worn visibly.</p></div>
+  <div class="card"><code>walref</code><p>Prints the last wal_ref in receipts/*.jsonl.
+    Fleet law: a claim about a run must cite its wal_ref or it is a rumor.</p></div>
+  <div class="card"><code>ship "msg"</code><p>Commit + push with a receipt-citing message,
+    printing the short hash. The one-liner that keeps the ledger honest.</p></div>
+  <div class="card"><code>prqueue</code><p>Open PRs across the org — the Casey gate,
+    visible from the shell.</p></div>
+  <div class="card"><code>lanes</code> / <code>recent</code><p>Jump to the lane root; heartbeat
+    of the last commit per lane. Fleet awareness without leaving the terminal.</p></div>
+  <div class="card"><code>receipts</code> theme<p>Prompt segments: lane name, pin dot,
+    path, branch. Degrades gracefully outside a lane — plain shell elsewhere.</p></div>
+</div>
+
+<h2>▶ Why this matters (the receipts-culture pitch)</h2>
+<p class="sub">The fleet's bet: <b>effects are cheap, evidence is expensive</b>. Most
+shells help you do things; this one tells you whether what you did is proven.
+The green dot is not decoration — it is the last pin verdict, following you
+around the tree. Break a pin and your prompt turns red before you even think
+about pushing. That is the ah-ha: <b>the shell itself became a receipt
+surface.</b></p>
+
+<script>
+const $ = id => document.getElementById(id);
+function setDot(n, okNow){
+  const d = $('dot'+n);
+  d.style.background = okNow ? 'var(--green)' : 'var(--red)';
+  d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop');
+  const out = $('out'+n);
+  out.innerHTML = okNow
+    ? '<span style="color:var(--green)">PASS 5/5</span>  <span class="dim">(.pin-last written — the dot remembers)</span>'
+    : '<span style="color:var(--red)">FAIL 1/5</span>  <span class="dim">tools/pin_h1.py — see refusal row</span>';
+}
+function breakIt(){ setDot(2,false); }
+function walrefDemo(){ const t=$('walterm'); t.style.display='block';
+  t.scrollIntoView({behavior:'smooth',block:'center'}); }
+// tiny opening choreography: pinrun "types" itself once
+let step=0; const script=[[1,true],[2,false]];
+function tick(){ if(step<2){ setDot(script[step][0], script[step][1]); step++; setTimeout(tick,900);} }
+setTimeout(tick,700);
+</script>
+</body>
+</html>
